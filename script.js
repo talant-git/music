@@ -147,7 +147,7 @@ function toggleShuffle() { isShuffle = !isShuffle; setToggle('.js-shuffle', isSh
 function toggleRepeat() { isRepeat = !isRepeat; audio.loop = isRepeat; setToggle('.js-repeat', isRepeat); showToast('Repeat', isRepeat ? 'Enabled' : 'Disabled'); }
 
 function renderGrid() {
-    $('made-for-you-grid').innerHTML = songs.map((song, idx) => `
+    $('made-for-you-grid').innerHTML = songs.map((song, idx) => song.album === 'Audius' ? '' : `
         <div onclick="selectSong(${idx})" class="glass-card p-3.5 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all duration-300">
             <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 shadow-lg">
                 <img src="${song.img}" alt="${song.title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
@@ -260,6 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function toggleLikeActiveSong() {
     if (!user) return openModal('auth', null, 'login');
+    if (String(songs[cur].id).startsWith('a_')) return showToast('Likes', 'Likes work only for tracks hosted on Nurgulify');
     try {
         const r = await api('/likes/' + songs[cur].id, 'POST');
         user.likes = r.likes;
@@ -382,3 +383,98 @@ function openModal(type, e, arg) {
     b.classList.add('flex');
     $('modal-content').querySelector('input')?.focus();
 }
+
+/* ========== SPOTIFY EMBEDS (links come from data/embeds.json) ========== */
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const { embeds } = await api('/embeds');
+        if (!embeds.length) return;
+        $('embed-section').classList.remove('hidden');
+        $('embed-grid').innerHTML = embeds.map(e => `<iframe title="Spotify player" src="https://open.spotify.com/embed/${e.type}/${e.id}?theme=0" width="100%" height="${e.type === 'track' ? 152 : 352}" frameborder="0" allow="encrypted-media; clipboard-write" loading="lazy" class="rounded-2xl"></iframe>`).join('');
+    } catch (e) {}
+});
+
+/* ========== AUDIUS (open music network): trending + search, artists are credited ========== */
+const AUDIUS = 'https://api.audius.co/v1';   // if it ever fails, try https://discoveryprovider.audius.co/v1
+const AUDIUS_APP = 'Nurgulify';
+const AUDIUS_KEY = '';                       // optional: paste your free Audius API key/bearer token here
+const A_FALLBACK_IMG = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80';
+const aLists = { trending: [], search: [] };
+
+const safe = (s, n = 80) => String(s || '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n);
+
+async function aFetch(path) {
+    const url = `${AUDIUS}${path}${path.includes('?') ? '&' : '?'}app_name=${AUDIUS_APP}`;
+    const r = await fetch(url, AUDIUS_KEY ? { headers: { Authorization: 'Bearer ' + AUDIUS_KEY } } : {});
+    if (!r.ok) throw new Error('Audius ' + r.status);
+    return (await r.json()).data || [];
+}
+
+function aImg(t) {
+    const u = t.artwork && (t.artwork['480x480'] || t.artwork['150x150'] || t.artwork['1000x1000']);
+    return /^https:\/\/[^\s"'<>]+$/.test(u || '') ? u : A_FALLBACK_IMG;
+}
+
+function fromAudius(t) {
+    const title = safe(t.title) || 'Untitled', artist = safe(t.user && t.user.name) || 'Unknown artist';
+    const link = 'https://audius.co' + (String(t.permalink || '').startsWith('/') ? safe(t.permalink, 200) : '');
+    return {
+        id: 'a_' + safe(t.id, 20), title, artist, album: 'Audius',
+        duration: t.duration ? formatTime(t.duration) : '0:00',
+        url: `${AUDIUS}/tracks/${encodeURIComponent(t.id)}/stream?app_name=${AUDIUS_APP}`,
+        img: aImg(t), liked: false,
+        credit: `"${title}" by ${artist}, streamed from Audius (${link})`
+    };
+}
+
+function playAudius(list, i) {
+    const t = aLists[list][i];
+    if (!t) return;
+    const s = fromAudius(t);
+    let idx = songs.findIndex(x => x.id === s.id);
+    if (idx < 0) { songs.push(s); idx = songs.length - 1; }
+    selectSong(idx);
+}
+
+const streamable = t => t && t.id && t.is_streamable !== false;
+
+async function loadAudiusTrending() {
+    try {
+        aLists.trending = (await aFetch('/tracks/trending?limit=12')).filter(streamable);
+        if (!aLists.trending.length) return;
+        $('audius-section').classList.remove('hidden');
+        $('audius-grid').innerHTML = aLists.trending.map((t, i) => `
+            <div onclick="playAudius('trending',${i})" class="glass-card p-3.5 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all duration-300">
+                <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 shadow-lg">
+                    <img src="${aImg(t)}" alt="${safe(t.title)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-lg"><i class="fa-solid fa-play ml-0.5 text-sm"></i></div>
+                    </div>
+                </div>
+                <h4 class="font-bold text-sm text-white truncate">${safe(t.title)}</h4>
+                <p class="text-xs text-gray-400 truncate mt-0.5">${safe(t.user && t.user.name)}</p>
+            </div>`).join('');
+    } catch (e) { /* Audius unreachable: the section simply stays hidden */ }
+}
+document.addEventListener('DOMContentLoaded', loadAudiusTrending);
+
+// Extend search: local tracks first, then results from Audius
+let aTimer;
+const localSearch = handleSearch;
+handleSearch = function (query, stay) {
+    localSearch(query, stay);
+    clearTimeout(aTimer);
+    const q = query.trim(), box = $('audius-search');
+    if (q.length < 2) { box.innerHTML = ''; return; }
+    aTimer = setTimeout(async () => {
+        try {
+            aLists.search = (await aFetch('/tracks/search?limit=12&query=' + encodeURIComponent(q))).filter(streamable);
+            box.innerHTML = aLists.search.length ? '<h3 class="text-lg font-bold text-white pt-4">From Audius</h3>' + aLists.search.map((t, i) => `
+                <div onclick="playAudius('search',${i})" class="flex items-center gap-3 p-3 rounded-xl glass-card cursor-pointer hover:bg-panelHover transition-all">
+                    <img src="${aImg(t)}" alt="" loading="lazy" class="w-10 h-10 rounded-lg object-cover shrink-0">
+                    <span class="text-white font-medium truncate">${safe(t.title)} - ${safe(t.user && t.user.name)}</span>
+                    <span class="text-purple-400 text-xs shrink-0 ml-auto">Audius</span>
+                </div>`).join('') : '';
+        } catch (e) { box.innerHTML = ''; }
+    }, 400);
+};
