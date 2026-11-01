@@ -350,7 +350,7 @@ function openModal(type, e, arg) {
     const pl = user && user.playlists.find(p => p.id === arg);
     const modals = {
         premium: `<div class="text-center space-y-4"><h3 class="text-2xl font-bold text-white">Nurgulify Premium</h3><p class="text-sm text-gray-300">Enjoy 100% ad-free high fidelity streaming.</p><button onclick="closeModal()" class="${btn}">Got It</button></div>`,
-        lyrics: `<div class="space-y-4">${head('Live Stream Lyrics')}<div class="text-center py-6 text-purple-300 font-medium space-y-3"><p class="text-lg font-bold">♪ Instrumental Audio Stream ♪</p><p>Enjoying the soundscape...</p></div></div>`,
+        lyrics: `<div class="space-y-4">${head('Live Stream Lyrics')}<div class="text-center py-6 text-purple-300 font-medium space-y-3"><p class="text-lg font-bold">♪ Instrumental Audio Stream ♪</p><p class="text-sm">${songs[cur].credit || 'Enjoying the soundscape...'}</p></div></div>`,
         queue: `<div class="space-y-4">${head('Queue')}<div class="space-y-2 max-h-80 overflow-y-auto">${songs.map((s, i) => `<div onclick="selectSong(${i});closeModal();" class="p-2.5 rounded-xl hover:bg-panelHover cursor-pointer text-xs ${i === cur ? 'text-purple-400 font-bold' : 'text-white'}">${s.title}</div>`).join('')}</div></div>`,
         auth: `<div class="space-y-4">${head(mode === 'register' ? 'Create account' : 'Log in')}
             <input id="auth-user" maxlength="20" placeholder="Username" autocomplete="username" class="${inp}">
