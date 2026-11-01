@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => loadAudiusFeed(true));
 
 /* ========== YOUTUBE MUSIC: search + popular, played in the official visible YouTube player ========== */
 const YT_KEY = '';   // paste your free YouTube Data API v3 key here (restrict it to your site's domain in Google Cloud)
-const YT_CHIPS = [['Popular', ''], ['Pop', 'pop music'], ['Hip-Hop', 'hip hop'], ['Kazakh', 'қазақша әндер'], ['Lofi', 'lofi'], ['Justin Bieber', 'Justin Bieber'], ['The Weeknd', 'The Weeknd']];
+const YT_CHIPS = [['Popular', ''], ['Pop', 'pop music'], ['Hip-Hop', 'hip hop'], ['Kazakh Hits', 'қазақша хит әндер'], ['Sadraddin', 'Sadraddin'], ['Miras', 'Miras қазақша ән'], ['Kilimger', 'Kilimger'], ['Dimash', 'Dimash Qudaibergen'], ['Ninety One', 'Ninety One'], ['Lofi', 'lofi'], ['Justin Bieber', 'Justin Bieber'], ['The Weeknd', 'The Weeknd']];
 const ytState = { q: '', token: '', items: [], cur: -1 };
 const ytOk = id => /^[\w-]{11}$/.test(id || '');
 
@@ -536,7 +536,7 @@ function setYtChip(q) { $('yt-search').value = q; ytState.q = q; renderYtChips()
 function ytSearch() { ytState.q = $('yt-search').value.trim(); renderYtChips(); loadYoutube(true); }
 
 async function loadYoutube(reset) {
-    if (!YT_KEY) { $('yt-msg').textContent = 'To enable this section, add your free YouTube Data API key to YT_KEY at the end of script.js.'; return; }
+    if (!YT_KEY) return loadYoutubePicks();
     if (reset) { ytState.token = ''; ytState.items = []; $('yt-grid').innerHTML = ''; }
     $('yt-msg').textContent = '';
     try {
@@ -570,6 +570,21 @@ async function loadYoutube(reset) {
     } catch (e) {
         $('yt-msg').textContent = 'YouTube could not be reached (' + e.message + '). Check the API key and its quota.';
     }
+}
+
+// Without an API key: show the videos listed in data/youtube-videos.json (paste YouTube links there)
+async function loadYoutubePicks() {
+    try {
+        const list = (await (await fetch('data/youtube-videos.json')).json()).videos || [];
+        ytState.items = list.map(v => ({ id: (/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/)([\w-]{11})/.exec(v.url || '') || [])[1], title: safe(v.title, 90) || 'YouTube video', channel: safe(v.artist, 60) }))
+            .filter(v => ytOk(v.id));
+        $('yt-grid').innerHTML = ytState.items.map((v, i) => `
+            <div onclick="playYoutube(${i})" class="glass-card p-3 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all">
+                <div class="relative w-full aspect-video rounded-xl overflow-hidden mb-3"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="${v.title}" loading="lazy" class="w-full h-full object-cover"></div>
+                <h4 class="font-bold text-sm text-white line-clamp-2">${v.title}</h4><p class="text-xs text-gray-400 truncate mt-0.5">${v.channel}</p>
+            </div>`).join('');
+        $('yt-msg').textContent = ytState.items.length ? '' : 'Add YouTube links to data/youtube-videos.json (or set YT_KEY in script.js to search all songs).';
+    } catch (e) { $('yt-msg').textContent = 'Set YT_KEY in script.js to search YouTube.'; }
 }
 
 function playYoutube(i) {
