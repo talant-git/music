@@ -188,6 +188,32 @@
                         </div>
                     </section>
 
+                    <section id="yt-section" class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-white tracking-tight">YouTube Music</h3>
+                            <span class="text-xs text-purple-400 font-medium">Popular songs via official YouTube player</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="search" id="yt-search" aria-label="Search YouTube" onkeydown="if(event.key==='Enter')ytSearch()" placeholder="Search any song or artist on YouTube..." class="flex-1 min-w-0 bg-panelBg border border-borderPurple rounded-full px-5 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-500">
+                            <button onclick="ytSearch()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold rounded-full">Search</button>
+                        </div>
+                        <div id="yt-chips" class="flex flex-wrap gap-2"></div>
+                        <p id="yt-msg" class="text-xs text-gray-400"></p>
+                        <div id="yt-player-box" class="hidden glass-card rounded-2xl p-3 space-y-3">
+                            <iframe id="yt-frame" title="YouTube player" class="w-full aspect-video rounded-xl bg-black" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+                            <div class="flex items-center justify-between gap-3">
+                                <h4 id="yt-title" class="text-sm font-bold text-white truncate"></h4>
+                                <div class="flex items-center gap-4 shrink-0 text-gray-300">
+                                    <button onclick="ytStep(-1)" aria-label="Previous video" class="hover:text-purple-400"><i class="fa-solid fa-backward-step"></i></button>
+                                    <button onclick="ytStep(1)" aria-label="Next video" class="hover:text-purple-400"><i class="fa-solid fa-forward-step"></i></button>
+                                    <button onclick="stopYoutube()" aria-label="Close player" class="hover:text-purple-400"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="yt-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+                        <button id="yt-more" onclick="loadYoutube()" class="hidden px-5 py-2.5 bg-panelBg border border-borderPurple hover:border-purple-500 rounded-full text-sm text-gray-200 transition-all">Load more</button>
+                    </section>
+
                     <section id="embed-section" class="space-y-4 hidden">
                         <div class="flex items-center justify-between">
                             <h3 class="text-xl font-bold text-white tracking-tight">Artists on Spotify</h3>
