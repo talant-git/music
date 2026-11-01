@@ -179,11 +179,28 @@
                         </div>
                         <div id="made-for-you-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
                     </section>
+
+                    <section id="embed-section" class="space-y-4 hidden">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-white tracking-tight">Artists on Spotify</h3>
+                            <span class="text-xs text-purple-400 font-medium">Official Spotify players</span>
+                        </div>
+                        <div id="embed-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                    </section>
+
+                    <section id="audius-section" class="space-y-4 hidden">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-white tracking-tight">Trending on Audius</h3>
+                            <a href="https://audius.co" target="_blank" rel="noopener" class="text-xs text-purple-400 font-medium hover:text-purple-300">Powered by Audius</a>
+                        </div>
+                        <div id="audius-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+                    </section>
                 </div>
 
                 <div id="search-view" class="space-y-6 hidden animate-fadeIn">
                     <h2 class="text-2xl font-bold text-white">Search Results</h2>
                     <div id="search-results-container" class="space-y-3"></div>
+                    <div id="audius-search" class="space-y-3"></div>
                 </div>
 
                 <div id="library-view" class="space-y-6 hidden animate-fadeIn">
