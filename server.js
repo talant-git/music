@@ -7,6 +7,12 @@ fs.mkdirSync(UPLOADS, { recursive: true });
 
 let db = { users: {}, sessions: {}, tracks: [] };
 if (fs.existsSync(DB_FILE)) db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+// Merge extra tracks from data/extra-tracks.json (added once, matched by url)
+try {
+    let maxId = db.tracks.reduce((a, t) => Math.max(a, t.id), 0);
+    JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'extra-tracks.json'), 'utf8'))
+        .forEach(t => { if (!db.tracks.some(x => x.url === t.url)) db.tracks.push({ ...t, id: ++maxId }); });
+} catch (e) { /* no extra file: fine */ }
 const save = () => { fs.writeFileSync(DB_FILE + '.tmp', JSON.stringify(db)); fs.renameSync(DB_FILE + '.tmp', DB_FILE); };
 
 const clean = (s, n = 60) => String(s || '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n);
@@ -135,6 +141,7 @@ async function api(req, res, url) {
     send(res, 404, { error: 'Not found' });
 }
 
+save();
 http.createServer(async (req, res) => {
     try {
         const url = new URL(req.url, 'http://localhost');
