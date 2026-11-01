@@ -515,3 +515,75 @@ async function loadAudiusFeed(reset) {
     more.disabled = false;
 }
 document.addEventListener('DOMContentLoaded', () => loadAudiusFeed(true));
+
+/* ========== YOUTUBE MUSIC: search + popular, played in the official visible YouTube player ========== */
+const YT_KEY = '';   // paste your free YouTube Data API v3 key here (restrict it to your site's domain in Google Cloud)
+const YT_CHIPS = [['Popular', ''], ['Pop', 'pop music'], ['Hip-Hop', 'hip hop'], ['Kazakh', 'қазақша әндер'], ['Lofi', 'lofi'], ['Justin Bieber', 'Justin Bieber'], ['The Weeknd', 'The Weeknd']];
+const ytState = { q: '', token: '', items: [], cur: -1 };
+const ytOk = id => /^[\w-]{11}$/.test(id || '');
+
+async function ytFetch(path, params) {
+    const qs = new URLSearchParams({ key: YT_KEY, part: 'snippet', ...params });
+    const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}?${qs}`);
+    if (!r.ok) throw new Error('YouTube ' + r.status);
+    return r.json();
+}
+
+function renderYtChips() {
+    $('yt-chips').innerHTML = YT_CHIPS.map(([label, q]) => `<button onclick="setYtChip('${q}')" class="px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${ytState.q === q ? 'bg-purple-600 border-purple-500 text-white' : 'bg-panelBg border-borderPurple text-gray-300 hover:border-purple-500'}">${label}</button>`).join('');
+}
+function setYtChip(q) { $('yt-search').value = q; ytState.q = q; renderYtChips(); loadYoutube(true); }
+function ytSearch() { ytState.q = $('yt-search').value.trim(); renderYtChips(); loadYoutube(true); }
+
+async function loadYoutube(reset) {
+    if (!YT_KEY) { $('yt-msg').textContent = 'To enable this section, add your free YouTube Data API key to YT_KEY at the end of script.js.'; return; }
+    if (reset) { ytState.token = ''; ytState.items = []; $('yt-grid').innerHTML = ''; }
+    $('yt-msg').textContent = '';
+    try {
+        const p = { maxResults: '24' };
+        if (ytState.token) p.pageToken = ytState.token;
+        let d;
+        if (ytState.q) {
+            d = await ytFetch('search', { ...p, type: 'video', videoCategoryId: '10', videoEmbeddable: 'true', safeSearch: 'moderate', q: ytState.q });
+        } else {
+            try { d = await ytFetch('videos', { ...p, chart: 'mostPopular', videoCategoryId: '10', regionCode: 'KZ' }); }
+            catch (e) { d = await ytFetch('videos', { ...p, chart: 'mostPopular', videoCategoryId: '10', regionCode: 'US' }); }
+        }
+        ytState.token = d.nextPageToken || '';
+        const fresh = (d.items || []).map(it => ({
+            id: typeof it.id === 'string' ? it.id : it.id && it.id.videoId,
+            title: safe(it.snippet.title, 90), channel: safe(it.snippet.channelTitle, 60)
+        })).filter(v => ytOk(v.id) && !ytState.items.some(x => x.id === v.id));
+        const start = ytState.items.length;
+        ytState.items.push(...fresh);
+        $('yt-grid').insertAdjacentHTML('beforeend', fresh.map((v, k) => `
+            <div onclick="playYoutube(${start + k})" class="glass-card p-3 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all">
+                <div class="relative w-full aspect-video rounded-xl overflow-hidden mb-3">
+                    <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="${v.title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center"><i class="fa-solid fa-play ml-0.5 text-sm"></i></div></div>
+                </div>
+                <h4 class="font-bold text-sm text-white line-clamp-2">${v.title}</h4>
+                <p class="text-xs text-gray-400 truncate mt-0.5">${v.channel}</p>
+            </div>`).join(''));
+        $('yt-more').classList.toggle('hidden', !ytState.token);
+        if (!ytState.items.length) $('yt-msg').textContent = 'No results found.';
+    } catch (e) {
+        $('yt-msg').textContent = 'YouTube could not be reached (' + e.message + '). Check the API key and its quota.';
+    }
+}
+
+function playYoutube(i) {
+    const v = ytState.items[i];
+    if (!v) return;
+    ytState.cur = i;
+    audio.pause();                      // the site's own player stops while a video plays
+    $('yt-frame').src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0`;
+    $('yt-title').textContent = `${v.title} - ${v.channel}`;
+    $('yt-player-box').classList.remove('hidden');
+    $('yt-player-box').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function ytStep(d) { const n = ytState.cur + d; if (n >= 0 && n < ytState.items.length) playYoutube(n); }
+function stopYoutube() { $('yt-frame').src = 'about:blank'; $('yt-player-box').classList.add('hidden'); }
+
+audio.addEventListener('play', stopYoutube);   // starting a site track closes the YouTube player
+document.addEventListener('DOMContentLoaded', () => { renderYtChips(); loadYoutube(true); });
