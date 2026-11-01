@@ -14,15 +14,9 @@ const songs = [
       img:"https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=600&q=80", liked:false }
 ];
 
-// Restore liked songs between visits
-try {
-    const saved = JSON.parse(localStorage.getItem('nurgulify-liked') || 'null');
-    if (Array.isArray(saved)) songs.forEach(s => s.liked = saved.includes(s.id));
-} catch (e) {}
 
 const $ = id => document.getElementById(id);
 const audio = $('audio-element');
-const playlists = [];
 let cur = 0, isShuffle = false, isRepeat = false, view = 'home', toastTimer, failCount = 0;
 
 const formatTime = s => {
@@ -69,7 +63,7 @@ function loadSong(index) {
     audio.src = song.url;
     setWidth(0);
     setText(['footer-current-time', 'sidebar-current-time'], '0:00');
-    setText(['footer-duration', 'sidebar-duration'], song.duration);
+    setText(['footer-duration', 'sidebar-duration'], song.duration || '0:00');
     updateNowPlaying();
 }
 
@@ -152,15 +146,6 @@ function setToggle(selector, on) {
 function toggleShuffle() { isShuffle = !isShuffle; setToggle('.js-shuffle', isShuffle); showToast('Shuffle', isShuffle ? 'Enabled' : 'Disabled'); }
 function toggleRepeat() { isRepeat = !isRepeat; audio.loop = isRepeat; setToggle('.js-repeat', isRepeat); showToast('Repeat', isRepeat ? 'Enabled' : 'Disabled'); }
 
-function toggleLikeActiveSong() {
-    const s = songs[cur];
-    s.liked = !s.liked;
-    try { localStorage.setItem('nurgulify-liked', JSON.stringify(songs.filter(x => x.liked).map(x => x.id))); } catch (e) {}
-    updateNowPlaying();
-    if (view === 'library') renderLibrary();
-    showToast('Library', s.liked ? 'Added to Liked Songs' : 'Removed from Liked Songs');
-}
-
 function renderGrid() {
     $('made-for-you-grid').innerHTML = songs.map((song, idx) => `
         <div onclick="selectSong(${idx})" class="glass-card p-3.5 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all duration-300">
@@ -218,40 +203,7 @@ function handleSearch(query, stay) {
         </div>`).join('') : '<p class="text-sm text-gray-400">No results found.</p>';
 }
 
-function renderPlaylists() {
-    $('playlist-list').innerHTML = playlists.map(name => `
-        <a href="#" onclick="event.preventDefault();showToast('${name.replace(/['"\\<>&]/g, '')}','This playlist is empty')" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-panelHover transition-all">
-            <i class="fa-solid fa-music w-5 text-xs text-purple-400"></i><span class="truncate"></span>
-        </a>`).join('');
-    $('playlist-list').querySelectorAll('span').forEach((el, i) => el.textContent = playlists[i]);
-}
-
-function createPlaylist() {
-    const name = $('playlist-name').value.trim();
-    if (!name) { $('playlist-name').focus(); return; }
-    playlists.push(name);
-    renderPlaylists();
-    closeModal();
-    showToast('Playlist created', name);
-}
-
 const closeBtn = '<button onclick="closeModal()" aria-label="Close" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>';
-
-function openModal(type, e) {
-    if (e) e.preventDefault();
-    const modals = {
-        premium: `<div class="text-center space-y-4"><h3 class="text-2xl font-bold text-white">Nurgulify Premium</h3><p class="text-sm text-gray-300">Enjoy 100% ad-free high fidelity streaming.</p><button onclick="closeModal()" class="w-full py-3 bg-purple-600 text-white font-bold rounded-xl">Got It</button></div>`,
-        lyrics: `<div class="space-y-4"><div class="flex justify-between"><h3 class="text-lg font-bold text-white">Live Stream Lyrics</h3>${closeBtn}</div><div class="text-center py-6 text-purple-300 font-medium space-y-3"><p class="text-lg font-bold">♪ Instrumental Audio Stream ♪</p><p>Enjoying the soundscape...</p></div></div>`,
-        queue: `<div class="space-y-4"><div class="flex justify-between"><h3 class="text-lg font-bold text-white">Queue</h3>${closeBtn}</div><div class="space-y-2">${songs.map((s, i) => `<div onclick="selectSong(${i});closeModal();" class="p-2.5 rounded-xl hover:bg-panelHover cursor-pointer text-xs ${i === cur ? 'text-purple-400 font-bold' : 'text-white'}">${s.title}</div>`).join('')}</div></div>`,
-        'create-playlist': `<div class="space-y-4"><div class="flex justify-between"><h3 class="text-lg font-bold text-white">Create Playlist</h3>${closeBtn}</div><input id="playlist-name" maxlength="40" placeholder="Playlist name" onkeydown="if(event.key==='Enter')createPlaylist()" class="w-full bg-darkBg border border-borderPurple rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-purple-500"><button onclick="createPlaylist()" class="w-full py-3 bg-purple-600 text-white font-bold rounded-xl">Create</button></div>`,
-        profile: `<div class="text-center space-y-4"><h3 class="text-xl font-bold text-white">nurxan_17</h3><p class="text-xs text-gray-400">Connected to Nurgulify Cloud</p><button onclick="closeModal()" class="w-full py-2 bg-purple-600 text-white rounded-xl text-xs">Close</button></div>`
-    };
-    $('modal-content').innerHTML = modals[type] || modals.profile;
-    const b = $('modal-backdrop');
-    b.classList.remove('hidden');
-    b.classList.add('flex');
-    $('playlist-name')?.focus();
-}
 
 function closeModal() {
     const b = $('modal-backdrop');
@@ -266,4 +218,167 @@ function showToast(title, desc) {
     t.classList.remove('translate-x-[120%]', 'opacity-0');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.add('translate-x-[120%]', 'opacity-0'), 3000);
+}
+
+/* ========== ACCOUNTS, PLAYLISTS, UPLOADS (talk to server.js) ========== */
+let user = null;
+
+async function api(path, method = 'GET', body) {
+    const r = await fetch('/api' + path, {
+        method, credentials: 'same-origin',
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Request failed');
+    return data;
+}
+
+function applyUser(u) {
+    user = u;
+    songs.forEach(s => s.liked = !!u && u.likes.includes(s.id));
+    const name = u ? u.username : 'Guest';
+    $('sb-username').textContent = name;
+    $('sb-avatar').textContent = $('hd-avatar').textContent = name[0].toUpperCase();
+    updateNowPlaying();
+    renderLibrary();
+    renderPlaylists();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const [t, me] = await Promise.all([api('/tracks'), api('/me')]);
+        if (t.tracks.length) songs.splice(0, songs.length, ...t.tracks);
+        user = me.user;
+    } catch (e) {
+        showToast('Offline mode', 'Start the server (node server.js) to use accounts');
+    }
+    renderGrid();
+    if (audio.paused) loadSong(0);
+    applyUser(user);
+});
+
+async function toggleLikeActiveSong() {
+    if (!user) return openModal('auth', null, 'login');
+    try {
+        const r = await api('/likes/' + songs[cur].id, 'POST');
+        user.likes = r.likes;
+        applyUser(user);
+        showToast('Library', songs[cur].liked ? 'Added to Liked Songs' : 'Removed from Liked Songs');
+    } catch (e) { showToast('Error', e.message); }
+}
+
+function renderPlaylists() {
+    const box = $('playlist-list');
+    box.innerHTML = '';
+    (user ? user.playlists : []).forEach(p => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.className = 'flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-panelHover transition-all';
+        a.innerHTML = '<i class="fa-solid fa-music w-5 text-xs text-purple-400"></i><span class="truncate"></span>';
+        a.lastChild.textContent = p.name;
+        a.onclick = e => openModal('playlist', e, p.id);
+        box.appendChild(a);
+    });
+}
+
+async function submitAuth(mode) {
+    const username = $('auth-user').value.trim(), password = $('auth-pass').value;
+    try {
+        const r = await api('/' + mode, 'POST', { username, password });
+        applyUser(r.user);
+        closeModal();
+        showToast(mode === 'register' ? 'Welcome!' : 'Logged in', r.user.username);
+    } catch (e) { $('auth-err').textContent = e.message; }
+}
+
+async function logout() {
+    try { await api('/logout', 'POST'); } catch (e) {}
+    applyUser(null);
+    closeModal();
+    showToast('Logged out', 'See you soon');
+}
+
+async function createPlaylist() {
+    const name = $('playlist-name').value.trim();
+    if (!name) return $('playlist-name').focus();
+    try {
+        user.playlists = (await api('/playlists', 'POST', { name })).playlists;
+        renderPlaylists();
+        closeModal();
+        showToast('Playlist created', name);
+    } catch (e) { showToast('Error', e.message); }
+}
+
+async function addToPlaylist(pid) {
+    try {
+        user.playlists = (await api(`/playlists/${pid}/tracks`, 'POST', { trackId: songs[cur].id })).playlists;
+        closeModal();
+        showToast('Added to playlist', songs[cur].title);
+    } catch (e) { showToast('Error', e.message); }
+}
+
+async function uploadTrack() {
+    const file = $('up-file').files[0], err = $('up-err');
+    if (!file) { err.textContent = 'Choose an MP3 file'; return; }
+    if (file.size > 25 * 1024 * 1024) { err.textContent = 'File is too large (max 25 MB)'; return; }
+    err.textContent = 'Uploading...';
+    try {
+        const r = await fetch('/api/tracks', {
+            method: 'POST', credentials: 'same-origin', body: file,
+            headers: { 'Content-Type': file.type || 'audio/mpeg', 'X-Title': encodeURIComponent($('up-title').value), 'X-Artist': encodeURIComponent($('up-artist').value) }
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error);
+        data.track.liked = false;
+        songs.push(data.track);
+        renderGrid();
+        closeModal();
+        showToast('Track uploaded', data.track.title);
+    } catch (e) { err.textContent = e.message; }
+}
+
+const inp = 'w-full bg-darkBg border border-borderPurple rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-purple-500';
+const btn = 'w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl';
+const btn2 = 'w-full py-3 border border-purple-500/40 text-purple-300 font-bold rounded-xl hover:bg-panelHover';
+const head = t => `<div class="flex justify-between"><h3 class="text-lg font-bold text-white">${t}</h3>${closeBtn}</div>`;
+
+function openModal(type, e, arg) {
+    if (e) e.preventDefault();
+    if (!user && ['upload', 'addto', 'create-playlist', 'playlist'].includes(type)) { type = 'auth'; arg = 'login'; }
+    const mode = arg === 'register' ? 'register' : 'login';
+    const pl = user && user.playlists.find(p => p.id === arg);
+    const modals = {
+        premium: `<div class="text-center space-y-4"><h3 class="text-2xl font-bold text-white">Nurgulify Premium</h3><p class="text-sm text-gray-300">Enjoy 100% ad-free high fidelity streaming.</p><button onclick="closeModal()" class="${btn}">Got It</button></div>`,
+        lyrics: `<div class="space-y-4">${head('Live Stream Lyrics')}<div class="text-center py-6 text-purple-300 font-medium space-y-3"><p class="text-lg font-bold">♪ Instrumental Audio Stream ♪</p><p>Enjoying the soundscape...</p></div></div>`,
+        queue: `<div class="space-y-4">${head('Queue')}<div class="space-y-2 max-h-80 overflow-y-auto">${songs.map((s, i) => `<div onclick="selectSong(${i});closeModal();" class="p-2.5 rounded-xl hover:bg-panelHover cursor-pointer text-xs ${i === cur ? 'text-purple-400 font-bold' : 'text-white'}">${s.title}</div>`).join('')}</div></div>`,
+        auth: `<div class="space-y-4">${head(mode === 'register' ? 'Create account' : 'Log in')}
+            <input id="auth-user" maxlength="20" placeholder="Username" autocomplete="username" class="${inp}">
+            <input id="auth-pass" type="password" placeholder="Password (min 6 characters)" autocomplete="${mode === 'register' ? 'new-password' : 'current-password'}" onkeydown="if(event.key==='Enter')submitAuth('${mode}')" class="${inp}">
+            <p id="auth-err" class="text-xs text-red-400 min-h-[1rem]"></p>
+            <button onclick="submitAuth('${mode}')" class="${btn}">${mode === 'register' ? 'Sign up' : 'Log in'}</button>
+            <p class="text-xs text-gray-400 text-center">${mode === 'register' ? 'Already have an account?' : 'New here?'} <a href="#" onclick="openModal('auth',event,'${mode === 'register' ? 'login' : 'register'}')" class="text-purple-400 font-semibold">${mode === 'register' ? 'Log in' : 'Sign up'}</a></p></div>`,
+        profile: user
+            ? `<div class="text-center space-y-4"><h3 class="text-xl font-bold text-white">${user.username}</h3><p class="text-xs text-gray-400">${user.likes.length} liked songs · ${user.playlists.length} playlists</p><button onclick="openModal('upload')" class="${btn}">Upload a track</button><button onclick="logout()" class="${btn2}">Log out</button></div>`
+            : `<div class="text-center space-y-4"><h3 class="text-xl font-bold text-white">Guest</h3><p class="text-xs text-gray-400">Log in to save likes, playlists and upload music</p><button onclick="openModal('auth',null,'login')" class="${btn}">Log in</button><button onclick="openModal('auth',null,'register')" class="${btn2}">Sign up</button></div>`,
+        upload: `<div class="space-y-4">${head('Upload a track')}
+            <input id="up-title" maxlength="60" placeholder="Title" class="${inp}">
+            <input id="up-artist" maxlength="60" placeholder="Artist (optional)" class="${inp}">
+            <input id="up-file" type="file" accept="audio/mpeg,.mp3" class="${inp}">
+            <p id="up-err" class="text-xs text-gray-400 min-h-[1rem]">MP3 only, up to 25 MB. Visible to everyone.</p>
+            <button onclick="uploadTrack()" class="${btn}">Upload</button></div>`,
+        'create-playlist': `<div class="space-y-4">${head('Create Playlist')}<input id="playlist-name" maxlength="40" placeholder="Playlist name" onkeydown="if(event.key==='Enter')createPlaylist()" class="${inp}"><button onclick="createPlaylist()" class="${btn}">Create</button></div>`,
+        addto: `<div class="space-y-4">${head('Add to playlist')}<div class="space-y-2">${user && user.playlists.length
+            ? user.playlists.map(p => `<div onclick="addToPlaylist('${p.id}')" class="p-2.5 rounded-xl hover:bg-panelHover cursor-pointer text-white text-sm">${p.name}</div>`).join('')
+            : '<p class="text-sm text-gray-400">No playlists yet. Create one from the sidebar.</p>'}</div></div>`,
+        playlist: pl ? `<div class="space-y-4">${head(pl.name)}<div class="space-y-2 max-h-80 overflow-y-auto">${pl.tracks.length
+            ? pl.tracks.map(id => ({ s: songs.find(x => x.id === id), i: songs.findIndex(x => x.id === id) })).filter(x => x.s)
+                .map(({ s, i }) => `<div onclick="selectSong(${i});closeModal();" class="p-2.5 rounded-xl hover:bg-panelHover cursor-pointer text-white text-sm">${s.title} <span class="text-gray-400 text-xs">· ${s.artist}</span></div>`).join('')
+            : '<p class="text-sm text-gray-400">This playlist is empty. Use the folder button in the player to add the current song.</p>'}</div></div>` : ''
+    };
+    $('modal-content').innerHTML = modals[type] || modals.profile;
+    const b = $('modal-backdrop');
+    b.classList.remove('hidden');
+    b.classList.add('flex');
+    $('modal-content').querySelector('input')?.focus();
 }
