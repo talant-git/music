@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nurgulify — Lofi, Synthwave & Ambient</title>
+    <meta name="description" content="Listen to a curated collection of lofi, synthwave and ambient music on Nurgulify Music.">
+    <meta name="theme-color" content="#09070d">
+    <meta name="color-scheme" content="dark">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Nurgulify — Lofi, Synthwave & Ambient">
+    <meta property="og:description" content="Listen to a curated collection of lofi, synthwave and ambient music.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=64&q=80">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {
+                colors: { darkBg:'#09070d', panelBg:'#120f18', panelHover:'#1c1727', purpleAccent:'#9333ea', purpleGlow:'#a855f7', softPurple:'#3b2157', borderPurple:'#2d1e46' },
+                fontFamily: { sans: ['Inter', 'sans-serif'] }
+            } }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family:'Inter',sans-serif; background-color:#09070d; color:#f3f4f6; overflow-x:hidden; }
+        ::-webkit-scrollbar { width:6px; height:6px; }
+        ::-webkit-scrollbar-track { background:#09070d; }
+        ::-webkit-scrollbar-thumb { background:#2d1e46; border-radius:3px; }
+        ::-webkit-scrollbar-thumb:hover { background:#581c87; }
+        .glow-purple { box-shadow:0 0 30px rgba(147,51,234,.35); }
+        .glow-text { text-shadow:0 0 15px rgba(168,85,247,.6); }
+        .glass-panel { background:rgba(18,15,24,.7); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(147,51,234,.15); }
+        .glass-card { background:linear-gradient(135deg,rgba(28,23,39,.8) 0%,rgba(15,11,22,.9) 100%); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(168,85,247,.12); }
+        .hero-gradient { background:linear-gradient(135deg,#4c1d95 0%,#1e1b4b 50%,#09070d 100%); }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+        .animate-fadeIn { animation:fadeIn .35s ease-out; }
+        @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 min-h-screen flex flex-col select-none">
+
+    <!-- Toast -->
+    <div id="toast" role="status" aria-live="polite" class="fixed top-5 right-5 z-50 transform translate-x-[120%] opacity-0 pointer-events-none transition-all duration-300 bg-panelBg border border-purple-500/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 glass-panel">
+        <div class="w-8 h-8 rounded-full bg-purple-600/30 flex items-center justify-center text-purple-400"><i class="fa-solid fa-music text-sm"></i></div>
+        <div>
+            <h4 id="toast-title" class="text-sm font-semibold text-white">Playing Song</h4>
+            <p id="toast-desc" class="text-xs text-gray-400">Now streaming in high definition</p>
+        </div>
+    </div>
+
+    <audio id="audio-element" preload="metadata"></audio>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- LEFT SIDEBAR -->
+        <aside class="w-64 bg-panelBg border-r border-borderPurple hidden md:flex flex-col justify-between shrink-0 z-20 overflow-y-auto pb-24">
+            <div>
+                <div class="p-5 flex flex-col gap-2 border-b border-borderPurple/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl overflow-hidden shadow-lg border border-purple-500/30 shrink-0 bg-darkBg flex items-center justify-center">
+                            <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80" alt="Nurgulify Logo" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h1 class="text-base font-bold tracking-tight text-white leading-tight">Nurgulify</h1>
+                            <span class="text-[10px] uppercase tracking-widest text-purple-400 font-semibold">Music</span>
+                        </div>
+                    </div>
+                    <span class="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-purple-950/40 border border-purple-500/30 rounded-xl text-[11px] text-purple-300 font-medium">
+                        <i class="fa-solid fa-globe text-[10px]"></i><span>Nurgulify</span>
+                    </span>
+                </div>
+
+                <nav class="px-4 space-y-1.5 mt-3" aria-label="Main">
+                    <a href="#" data-nav="home" onclick="switchNav('home',event)" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent text-gray-400 hover:text-white hover:bg-panelHover">
+                        <i class="fa-solid fa-house w-5 text-base"></i> Home
+                    </a>
+                    <a href="#" data-nav="search" onclick="switchNav('search',event)" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent text-gray-400 hover:text-white hover:bg-panelHover">
+                        <i class="fa-solid fa-magnifying-glass w-5 text-base"></i> Search
+                    </a>
+                    <a href="#" data-nav="library" onclick="switchNav('library',event)" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent text-gray-400 hover:text-white hover:bg-panelHover">
+                        <i class="fa-solid fa-bookmark w-5 text-base"></i> Your Library
+                    </a>
+                </nav>
+
+                <div class="px-4 mt-6 space-y-1.5">
+                    <a href="#" onclick="openModal('create-playlist',event)" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-panelHover">
+                        <div class="w-5 h-5 rounded-md bg-gray-700/60 flex items-center justify-center text-white"><i class="fa-solid fa-plus text-xs"></i></div>
+                        Create Playlist
+                    </a>
+                    <a href="#" onclick="switchNav('library',event)" class="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-panelHover">
+                        <div class="w-5 h-5 rounded-md bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md"><i class="fa-solid fa-heart text-[10px]"></i></div>
+                        Liked Songs
+                    </a>
+                    <div id="playlist-list" class="space-y-1.5"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="p-4 m-4 rounded-2xl glass-card relative overflow-hidden group">
+                    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-purple-600/20 rounded-full blur-xl group-hover:bg-purple-600/40 transition-all duration-500"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-2 text-purple-400">
+                            <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                            <span class="text-xs font-bold uppercase tracking-wider">Nurgulify Premium</span>
+                        </div>
+                        <p class="text-xs text-gray-300 mb-3 leading-relaxed">No ads. Unlimited high-res streams.</p>
+                        <button onclick="openModal('premium')" class="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-purple-900/40 transition-all transform active:scale-95">Go Premium</button>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-borderPurple flex items-center justify-between text-xs text-gray-400">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-purple-900 border border-purple-500 flex items-center justify-center text-white font-bold">N</div>
+                        <span class="font-medium text-white">nurxan_17</span>
+                    </div>
+                    <button onclick="openModal('profile')" aria-label="Settings" class="hover:text-purple-400 transition-colors"><i class="fa-solid fa-gear"></i></button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto pb-28">
+            <header class="sticky top-0 z-30 bg-darkBg/80 backdrop-blur-md px-4 md:px-6 py-3 md:py-4 border-b border-borderPurple/50">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-4 flex-1 max-w-xl">
+                        <div class="relative w-full">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400"><i class="fa-solid fa-magnifying-glass text-sm"></i></span>
+                            <input type="search" id="global-search" oninput="handleSearch(this.value)" aria-label="Search" placeholder="Search songs, artists..." class="w-full bg-panelBg border border-borderPurple rounded-full pl-11 pr-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="showToast('Notifications','Live audio stream is online!')" aria-label="Notifications" class="w-10 h-10 rounded-full bg-panelBg border border-borderPurple flex items-center justify-center text-gray-300 hover:text-white hover:border-purple-500 transition-all relative">
+                            <i class="fa-regular fa-bell text-sm"></i>
+                            <span class="absolute top-2 right-2 w-2 h-2 bg-purple-500 rounded-full"></span>
+                        </button>
+                        <button onclick="openModal('profile')" aria-label="Profile" class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 p-0.5 shadow-lg shadow-purple-900/30">
+                            <span class="w-full h-full rounded-full bg-panelBg flex items-center justify-center text-white font-bold text-sm">N</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Mobile navigation (sidebar is hidden on small screens) -->
+                <nav class="md:hidden flex gap-2 mt-3" aria-label="Main mobile">
+                    <a href="#" data-nav="home" onclick="switchNav('home',event)" class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium border border-transparent text-gray-400"><i class="fa-solid fa-house"></i> Home</a>
+                    <a href="#" data-nav="search" onclick="switchNav('search',event)" class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium border border-transparent text-gray-400"><i class="fa-solid fa-magnifying-glass"></i> Search</a>
+                    <a href="#" data-nav="library" onclick="switchNav('library',event)" class="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium border border-transparent text-gray-400"><i class="fa-solid fa-bookmark"></i> Library</a>
+                </nav>
+            </header>
+
+            <div id="view-container" class="p-4 md:p-6 lg:p-8 space-y-8 flex-1">
+                <div id="home-view" class="space-y-8 animate-fadeIn">
+                    <div class="relative w-full min-h-[320px] lg:min-h-[360px] rounded-3xl overflow-hidden hero-gradient p-6 md:p-8 lg:p-12 flex flex-col justify-between gap-6 glow-purple shadow-2xl">
+                        <div class="absolute -right-20 -top-20 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="absolute right-10 bottom-0 w-1/2 h-full opacity-70 pointer-events-none hidden md:block">
+                            <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80" alt="" class="w-full h-full object-cover mix-blend-luminosity contrast-125">
+                        </div>
+                        <div class="relative z-10 max-w-lg space-y-3">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-semibold">
+                                <i class="fa-solid fa-star text-[10px]"></i> Your music, your mood
+                            </div>
+                            <h2 class="text-4xl lg:text-5xl font-extrabold text-white tracking-tight glow-text">Nurgulify Music</h2>
+                            <p class="text-gray-300 text-sm lg:text-base leading-relaxed">Stream professional copyright-free synthwave, lofi beats, and spatial electronic tracks instantly.</p>
+                        </div>
+                        <div class="relative z-10 flex items-center gap-4">
+                            <button onclick="selectSong(0)" class="px-6 py-3.5 bg-white text-darkBg hover:bg-purple-100 font-bold rounded-2xl shadow-xl flex items-center gap-3 transition-all transform hover:scale-105 active:scale-95">
+                                <i class="fa-solid fa-play text-purple-700"></i> Play Live Stream
+                            </button>
+                        </div>
+                    </div>
+
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-white tracking-tight">Curated Master Tracks</h3>
+                            <span class="text-xs text-purple-400 font-medium">Real Audio Streams</span>
+                        </div>
+                        <div id="made-for-you-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+                    </section>
+                </div>
+
+                <div id="search-view" class="space-y-6 hidden animate-fadeIn">
+                    <h2 class="text-2xl font-bold text-white">Search Results</h2>
+                    <div id="search-results-container" class="space-y-3"></div>
+                </div>
+
+                <div id="library-view" class="space-y-6 hidden animate-fadeIn">
+                    <h2 class="text-2xl font-bold text-white">Your Liked Songs Library</h2>
+                    <div id="library-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR -->
+        <aside class="w-80 bg-panelBg border-l border-borderPurple hidden xl:flex flex-col p-6 pb-28 z-20 shrink-0 space-y-6 overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400">Now Playing</h3>
+                <button onclick="openModal('queue')" class="text-xs text-purple-400 hover:text-purple-300 font-semibold">Queue</button>
+            </div>
+            <div class="relative w-full aspect-square rounded-3xl overflow-hidden group shadow-2xl border border-purple-500/20">
+                <img id="right-sidebar-img" alt="Album art" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-darkBg via-transparent to-transparent opacity-80"></div>
+                <div class="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <h4 id="right-sidebar-title" class="text-base font-bold text-white truncate">Track Title</h4>
+                        <p id="right-sidebar-artist" class="text-xs text-gray-300 truncate">Artist</p>
+                    </div>
+                    <button onclick="toggleLikeActiveSong()" aria-label="Like" class="w-9 h-9 shrink-0 rounded-full bg-panelBg/80 backdrop-blur-md flex items-center justify-center text-purple-400">
+                        <i id="right-sidebar-like-icon" class="fa-solid fa-heart text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-xs text-gray-400">
+                    <span id="sidebar-current-time">0:00</span><span id="sidebar-duration">0:00</span>
+                </div>
+                <div onclick="seekTrack(event)" class="w-full h-1.5 bg-borderPurple rounded-full cursor-pointer relative overflow-hidden">
+                    <div id="sidebar-progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full w-0"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between px-4">
+                <button onclick="toggleShuffle()" aria-label="Shuffle" class="js-shuffle text-gray-400 hover:text-white"><i class="fa-solid fa-shuffle text-sm"></i></button>
+                <button onclick="prevTrack()" aria-label="Previous" class="text-gray-200 hover:text-purple-400"><i class="fa-solid fa-backward-step text-lg"></i></button>
+                <button onclick="togglePlayPause()" aria-label="Play/Pause" class="w-12 h-12 rounded-full bg-white text-darkBg hover:bg-purple-100 flex items-center justify-center shadow-lg transition-transform transform active:scale-95">
+                    <i class="js-play-icon fa-solid fa-play text-base"></i>
+                </button>
+                <button onclick="nextTrack()" aria-label="Next" class="text-gray-200 hover:text-purple-400"><i class="fa-solid fa-forward-step text-lg"></i></button>
+                <button onclick="toggleRepeat()" aria-label="Repeat" class="js-repeat text-gray-400 hover:text-white"><i class="fa-solid fa-repeat text-sm"></i></button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- PLAYER BAR -->
+    <footer class="fixed bottom-0 left-0 right-0 h-24 bg-panelBg/95 backdrop-blur-xl border-t border-borderPurple z-40 px-3 md:px-4 lg:px-8 flex items-center justify-between gap-3 shadow-2xl">
+        <div class="flex items-center gap-3 md:gap-4 flex-1 min-w-0 md:flex-none md:w-1/4">
+            <img id="footer-img" alt="Album art" class="w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-2xl object-cover shadow-md border border-purple-500/20">
+            <div class="min-w-0">
+                <h4 id="footer-title" class="text-sm font-bold text-white truncate">Title</h4>
+                <p id="footer-artist" class="text-xs text-gray-400 truncate">Artist</p>
+            </div>
+            <button onclick="toggleLikeActiveSong()" aria-label="Like" class="text-purple-400 ml-1 shrink-0"><i id="footer-like-icon" class="fa-solid fa-heart text-sm"></i></button>
+        </div>
+
+        <div class="flex flex-col items-center gap-2 shrink-0 w-[170px] sm:w-[280px] md:w-2/4 md:max-w-xl">
+            <div class="flex items-center gap-4 md:gap-6">
+                <button onclick="toggleShuffle()" aria-label="Shuffle" class="js-shuffle hidden sm:block text-gray-400 hover:text-purple-400"><i class="fa-solid fa-shuffle text-sm"></i></button>
+                <button onclick="prevTrack()" aria-label="Previous" class="text-gray-300 hover:text-white"><i class="fa-solid fa-backward-step text-base"></i></button>
+                <button onclick="togglePlayPause()" aria-label="Play/Pause" class="w-10 h-10 rounded-full bg-white text-darkBg hover:bg-purple-100 flex items-center justify-center shadow-lg transition-transform transform active:scale-95">
+                    <i class="js-play-icon fa-solid fa-play text-sm"></i>
+                </button>
+                <button onclick="nextTrack()" aria-label="Next" class="text-gray-300 hover:text-white"><i class="fa-solid fa-forward-step text-base"></i></button>
+                <button onclick="toggleRepeat()" aria-label="Repeat" class="js-repeat hidden sm:block text-gray-400 hover:text-purple-400"><i class="fa-solid fa-repeat text-sm"></i></button>
+            </div>
+            <div class="w-full flex items-center gap-2 md:gap-3">
+                <span id="footer-current-time" class="text-[11px] text-gray-400 w-8 text-right">0:00</span>
+                <div onclick="seekTrack(event)" class="flex-1 h-1.5 bg-borderPurple rounded-full cursor-pointer relative overflow-hidden">
+                    <div id="footer-progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full w-0"></div>
+                </div>
+                <span id="footer-duration" class="text-[11px] text-gray-400 w-8">0:00</span>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center justify-end gap-4 w-1/4">
+            <button onclick="openModal('lyrics')" title="Lyrics" aria-label="Lyrics" class="text-gray-400 hover:text-purple-400"><i class="fa-solid fa-microphone-lines text-sm"></i></button>
+            <button onclick="openModal('queue')" title="Queue" aria-label="Queue" class="text-gray-400 hover:text-purple-400"><i class="fa-solid fa-bars-staggered text-sm"></i></button>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleMute()" aria-label="Mute" class="text-gray-400 hover:text-purple-400 w-5"><i id="volume-icon" class="fa-solid fa-volume-high text-sm"></i></button>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.8" oninput="changeVolume(this.value)" aria-label="Volume" class="w-20 accent-purple-500 cursor-pointer">
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL -->
+    <div id="modal-backdrop" onclick="if(event.target===this)closeModal()" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div id="modal-content" role="dialog" aria-modal="true" class="bg-panelBg border border-purple-500/30 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative"></div>
+    </div>
+
+    <script>
+        const songs = [
+            { id:1, title:"Lofi Study Session", artist:"Freesound Audio", album:"Chill & Relax", duration:"2:30",
+              url:"https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3",
+              img:"https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80", liked:true },
+            { id:2, title:"Synthwave Sunset", artist:"Cyber Pulse", album:"Synthwave 1984", duration:"2:15",
+              url:"https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=synthwave-80s-10978.mp3",
+              img:"https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80", liked:false },
+            { id:3, title:"Midnight Ambient Chill", artist:"Astral Sound", album:"Late Night", duration:"2:40",
+              url:"https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=ambient-classical-guitar-14498.mp3",
+              img:"https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=600&q=80", liked:true },
+            { id:4, title:"Cosmic Electronic Flow", artist:"Nebula Sound", album:"Focus Flow", duration:"2:20",
+              url:"https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3?filename=space-chillout-12596.mp3",
+              img:"https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=600&q=80", liked:false }
+        ];
+
+        // Restore liked songs between visits
+        try {
+            const saved = JSON.parse(localStorage.getItem('nurgulify-liked') || 'null');
+            if (Array.isArray(saved)) songs.forEach(s => s.liked = saved.includes(s.id));
+        } catch (e) {}
+
+        const $ = id => document.getElementById(id);
+        const audio = $('audio-element');
+        const playlists = [];
+        let cur = 0, isShuffle = false, isRepeat = false, view = 'home', toastTimer, failCount = 0;
+
+        const formatTime = s => {
+            if (!isFinite(s)) return '0:00';
+            return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+        };
+        const setText = (ids, text) => ids.forEach(id => $(id).innerText = text);
+        const setWidth = pct => ['footer-progress-bar', 'sidebar-progress-bar'].forEach(id => $(id).style.width = pct + '%');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            audio.volume = 0.8;
+            renderGrid();
+            renderPlaylists();
+            loadSong(0);
+            switchNav('home');
+
+            audio.addEventListener('timeupdate', () => {
+                if (!audio.duration) return;
+                setWidth((audio.currentTime / audio.duration) * 100);
+                setText(['footer-current-time', 'sidebar-current-time'], formatTime(audio.currentTime));
+            });
+            audio.addEventListener('loadedmetadata', () => setText(['footer-duration', 'sidebar-duration'], formatTime(audio.duration)));
+            audio.addEventListener('play', () => { failCount = 0; setPlayIcons(true); });
+            audio.addEventListener('pause', () => setPlayIcons(false));
+            audio.addEventListener('ended', nextTrack);
+            audio.addEventListener('error', () => {
+                showToast('Playback error', 'This track could not be loaded');
+                setPlayIcons(false);
+                if (++failCount < songs.length && audio.dataset.wantPlay === '1') nextTrack();
+            });
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') closeModal();
+                if (e.code === 'Space' && !['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(e.target.tagName)) {
+                    e.preventDefault();
+                    togglePlayPause();
+                }
+            });
+        });
+
+        function loadSong(index) {
+            cur = index;
+            const song = songs[cur];
+            audio.src = song.url;
+            setWidth(0);
+            setText(['footer-current-time', 'sidebar-current-time'], '0:00');
+            setText(['footer-duration', 'sidebar-duration'], song.duration);
+            updateNowPlaying();
+        }
+
+        // Updates the UI only: it does not touch the audio, so liking a song never restarts it
+        function updateNowPlaying() {
+            const s = songs[cur];
+            setText(['footer-title', 'right-sidebar-title'], s.title);
+            setText(['footer-artist', 'right-sidebar-artist'], s.artist);
+            $('footer-img').src = $('right-sidebar-img').src = s.img;
+            ['footer-like-icon', 'right-sidebar-like-icon'].forEach(id => {
+                $(id).className = 'fa-heart text-sm ' + (s.liked ? 'fa-solid text-purple-500' : 'fa-regular text-gray-400');
+            });
+        }
+
+        function playCurrent() {
+            audio.dataset.wantPlay = '1';
+            const p = audio.play();
+            if (p) p.catch(() => {});
+        }
+
+        function togglePlayPause() {
+            if (audio.paused) {
+                playCurrent();
+                showToast('Playing', songs[cur].title);
+            } else {
+                audio.dataset.wantPlay = '0';
+                audio.pause();
+            }
+        }
+
+        function setPlayIcons(playing) {
+            document.querySelectorAll('.js-play-icon').forEach(i => {
+                i.classList.toggle('fa-pause', playing);
+                i.classList.toggle('fa-play', !playing);
+            });
+        }
+
+        function selectSong(index) {
+            if (index !== cur) loadSong(index);
+            playCurrent();
+            showToast('Now Playing', songs[cur].title);
+        }
+
+        function nextTrack() {
+            let next = (cur + 1) % songs.length;
+            if (isShuffle && songs.length > 1) {
+                do { next = Math.floor(Math.random() * songs.length); } while (next === cur);
+            }
+            loadSong(next);
+            playCurrent();
+            showToast('Now Playing', songs[cur].title);
+        }
+
+        function prevTrack() {
+            if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+            loadSong((cur - 1 + songs.length) % songs.length);
+            playCurrent();
+            showToast('Now Playing', songs[cur].title);
+        }
+
+        function seekTrack(event) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            if (audio.duration) audio.currentTime = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1) * audio.duration;
+        }
+
+        function updateVolumeIcon() {
+            const off = audio.muted || audio.volume === 0;
+            $('volume-icon').className = 'fa-solid text-sm ' + (off ? 'fa-volume-xmark' : audio.volume < 0.5 ? 'fa-volume-low' : 'fa-volume-high');
+        }
+        function changeVolume(val) { audio.volume = +val; audio.muted = false; updateVolumeIcon(); }
+        function toggleMute() { audio.muted = !audio.muted; updateVolumeIcon(); }
+
+        function setToggle(selector, on) {
+            document.querySelectorAll(selector).forEach(b => {
+                b.classList.toggle('text-purple-400', on);
+                b.classList.toggle('text-gray-400', !on);
+                b.setAttribute('aria-pressed', on);
+            });
+        }
+        function toggleShuffle() { isShuffle = !isShuffle; setToggle('.js-shuffle', isShuffle); showToast('Shuffle', isShuffle ? 'Enabled' : 'Disabled'); }
+        function toggleRepeat() { isRepeat = !isRepeat; audio.loop = isRepeat; setToggle('.js-repeat', isRepeat); showToast('Repeat', isRepeat ? 'Enabled' : 'Disabled'); }
+
+        function toggleLikeActiveSong() {
+            const s = songs[cur];
+            s.liked = !s.liked;
+            try { localStorage.setItem('nurgulify-liked', JSON.stringify(songs.filter(x => x.liked).map(x => x.id))); } catch (e) {}
+            updateNowPlaying();
+            if (view === 'library') renderLibrary();
+            showToast('Library', s.liked ? 'Added to Liked Songs' : 'Removed from Liked Songs');
+        }
+
+        function renderGrid() {
+            $('made-for-you-grid').innerHTML = songs.map((song, idx) => `
+                <div onclick="selectSong(${idx})" class="glass-card p-3.5 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all duration-300">
+                    <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 shadow-lg">
+                        <img src="${song.img}" alt="${song.title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-lg"><i class="fa-solid fa-play ml-0.5 text-sm"></i></div>
+                        </div>
+                    </div>
+                    <h4 class="font-bold text-sm text-white truncate">${song.title}</h4>
+                    <p class="text-xs text-gray-400 truncate mt-0.5">${song.artist}</p>
+                </div>`).join('');
+        }
+
+        function switchNav(tab, e) {
+            if (e) e.preventDefault();
+            view = tab;
+            ['home', 'search', 'library'].forEach(t => $(t + '-view').classList.toggle('hidden', t !== tab));
+            document.querySelectorAll('[data-nav]').forEach(a => {
+                const on = a.dataset.nav === tab;
+                ['bg-purple-900/40', 'text-white', 'border-purple-500/30', 'shadow-lg'].forEach(c => a.classList.toggle(c, on));
+                ['text-gray-400', 'border-transparent'].forEach(c => a.classList.toggle(c, !on));
+                const icon = a.querySelector('i');
+                icon.classList.toggle('text-purple-400', on);
+                icon.classList.toggle('text-gray-400', !on);
+            });
+            if (tab === 'library') renderLibrary();
+            if (tab === 'search') handleSearch($('global-search').value, true);
+        }
+
+        function renderLibrary() {
+            const liked = songs.map((s, i) => ({ s, i })).filter(x => x.s.liked);
+            $('library-list').innerHTML = liked.length ? liked.map(({ s, i }) => `
+                <div onclick="selectSong(${i})" class="flex items-center justify-between p-3 rounded-2xl glass-card cursor-pointer hover:bg-panelHover transition-all">
+                    <div class="flex items-center gap-4 min-w-0">
+                        <img src="${s.img}" alt="${s.title}" class="w-12 h-12 rounded-xl object-cover shrink-0">
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-bold text-white truncate">${s.title}</h4>
+                            <p class="text-xs text-gray-400 truncate">${s.artist}</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-heart text-purple-500 ml-3"></i>
+                </div>`).join('') : '<p class="text-sm text-gray-400">No liked songs yet. Tap the heart on any track.</p>';
+        }
+
+        function handleSearch(query, stay) {
+            const q = query.trim().toLowerCase();
+            if (!q) { if (!stay) switchNav('home'); else $('search-results-container').innerHTML = '<p class="text-sm text-gray-400">Type something to search.</p>'; return; }
+            if (view !== 'search') { switchNav('search'); }
+            const results = songs.map((s, i) => ({ s, i })).filter(({ s }) => [s.title, s.artist, s.album].some(f => f.toLowerCase().includes(q)));
+            $('search-results-container').innerHTML = results.length ? results.map(({ s, i }) => `
+                <div onclick="selectSong(${i})" class="flex items-center justify-between p-3 rounded-xl glass-card cursor-pointer hover:bg-panelHover transition-all">
+                    <span class="text-white font-medium truncate">${s.title} - ${s.artist}</span>
+                    <span class="text-purple-400 text-xs shrink-0 ml-3">Play Stream</span>
+                </div>`).join('') : '<p class="text-sm text-gray-400">No results found.</p>';
+        }
+
+        function renderPlaylists() {
+            $('playlist-list').innerHTML = playlists.map(name => `
+                <a href="#" onclick="event.preventDefault();showToast('${name.replace(/['"\\<>&]/g, '')}','This playlist is empty')" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-panelHover transition-all">
+                    <i class="fa-solid fa-music w-5 text-xs text-purple-400"></i><span class="truncate"></span>
+                </a>`).join('');
+            $('playlist-list').querySelectorAll('span').forEach((el, i) => el.textContent = playlists[i]);
+        }
+
+        function createPlaylist() {
+            const name = $('playlist-name').value.trim();
+            if (!name) { $('playlist-name').focus(); return; }
+            playlists.push(name);
+            renderPlaylists();
+            closeModal();
+            showToast('Playlist created', name);
+        }
+
+        const closeBtn = '<button onclick="closeModal()" aria-label="Close" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>';
+
+        function openModal(type, e) {
+            if (e) e.preventDefault();
+            const modals = {
+                premium: `<div class="text-center space-y-4"><h3 class="text-2xl font-bold text-white">Nurgulify Premium</h3><p class="text-sm text-gray-300">Enjoy 100% ad-free high fidelity streaming.</p><button onclick="closeModal()" class="w-full py-3 bg-purple-600 text-white font-bold rounded-xl">Got It</button></div>`,
+                lyrics: `<div class="space-y-4"><div class="flex justify-between"><h3 class="text-lg font-bold text-white">Live Stream Lyrics</h3>${closeBtn}</div><div class="text-center py-6 text-purple-300 font-medium space-y-3"><p class="text-lg font-bold">♪ Instrumental Audio Stream ♪</p><p>Enjoying the soundscape...</p></div></div>`,
+                queue: `<div class="space-y-4"><div class="flex justify-between"><h3 class="text-lg font-bold text-white">Queue</h3>${closeBtn}</div><div class="space-y-2">${songs.map((s, i) => `<div onclick="selectSong(${i});closeModal();" class="p-2.5 rounded-xl hover:bg-panelHover cursor-pointer text-xs ${i === cur ? 'text-purple-400 font-bold' : 'text-white'}">${s.title}</div>`).join('')}</div></div>`,
+                'create-playlist': `<div class="space-y-4"><div class="flex justify-between"><h3 class="text-lg font-bold text-white">Create Playlist</h3>${closeBtn}</div><input id="playlist-name" maxlength="40" placeholder="Playlist name" onkeydown="if(event.key==='Enter')createPlaylist()" class="w-full bg-darkBg border border-borderPurple rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-purple-500"><button onclick="createPlaylist()" class="w-full py-3 bg-purple-600 text-white font-bold rounded-xl">Create</button></div>`,
+                profile: `<div class="text-center space-y-4"><h3 class="text-xl font-bold text-white">nurxan_17</h3><p class="text-xs text-gray-400">Connected to Nurgulify Cloud</p><button onclick="closeModal()" class="w-full py-2 bg-purple-600 text-white rounded-xl text-xs">Close</button></div>`
+            };
+            $('modal-content').innerHTML = modals[type] || modals.profile;
+            const b = $('modal-backdrop');
+            b.classList.remove('hidden');
+            b.classList.add('flex');
+            $('playlist-name')?.focus();
+        }
+
+        function closeModal() {
+            const b = $('modal-backdrop');
+            b.classList.add('hidden');
+            b.classList.remove('flex');
+        }
+
+        function showToast(title, desc) {
+            const t = $('toast');
+            $('toast-title').innerText = title;
+            $('toast-desc').innerText = desc;
+            t.classList.remove('translate-x-[120%]', 'opacity-0');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.add('translate-x-[120%]', 'opacity-0'), 3000);
+        }
+    </script>
+</body>
+</html>
