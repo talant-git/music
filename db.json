@@ -1,0 +1,42 @@
+{
+ "users": {},
+ "sessions": {},
+ "tracks": [
+  {
+   "id": 1,
+   "title": "Lofi Study Session",
+   "artist": "Freesound Audio",
+   "album": "Chill & Relax",
+   "duration": "2:30",
+   "url": "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3",
+   "img": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80"
+  },
+  {
+   "id": 2,
+   "title": "Synthwave Sunset",
+   "artist": "Cyber Pulse",
+   "album": "Synthwave 1984",
+   "duration": "2:15",
+   "url": "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=synthwave-80s-10978.mp3",
+   "img": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80"
+  },
+  {
+   "id": 3,
+   "title": "Midnight Ambient Chill",
+   "artist": "Astral Sound",
+   "album": "Late Night",
+   "duration": "2:40",
+   "url": "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=ambient-classical-guitar-14498.mp3",
+   "img": "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=600&q=80"
+  },
+  {
+   "id": 4,
+   "title": "Cosmic Electronic Flow",
+   "artist": "Nebula Sound",
+   "album": "Focus Flow",
+   "duration": "2:20",
+   "url": "https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3?filename=space-chillout-12596.mp3",
+   "img": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=600&q=80"
+  }
+ ]
+}
