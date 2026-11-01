@@ -412,7 +412,7 @@ const AUDIUS = 'https://api.audius.co/v1';   // if it ever fails, try https://di
 const AUDIUS_APP = 'Nurgulify';
 const AUDIUS_KEY = '';                       // optional: paste your free Audius API key/bearer token here
 const A_FALLBACK_IMG = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80';
-const aLists = { trending: [], search: [] };
+const aLists = { feed: [], search: [] };
 
 const safe = (s, n = 80) => String(s || '').replace(/[<>&"'`\\]/g, '').trim().slice(0, n);
 
@@ -440,36 +440,8 @@ function fromAudius(t) {
     };
 }
 
-function playAudius(list, i) {
-    const t = aLists[list][i];
-    if (!t) return;
-    const s = fromAudius(t);
-    let idx = songs.findIndex(x => x.id === s.id);
-    if (idx < 0) { songs.push(s); idx = songs.length - 1; }
-    selectSong(idx);
-}
 
 const streamable = t => t && t.id && t.is_streamable !== false;
-
-async function loadAudiusTrending() {
-    try {
-        aLists.trending = (await aFetch('/tracks/trending?limit=12')).filter(streamable);
-        if (!aLists.trending.length) return;
-        $('audius-section').classList.remove('hidden');
-        $('audius-grid').innerHTML = aLists.trending.map((t, i) => `
-            <div onclick="playAudius('trending',${i})" class="glass-card p-3.5 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all duration-300">
-                <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 shadow-lg">
-                    <img src="${aImg(t)}" alt="${safe(t.title)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-lg"><i class="fa-solid fa-play ml-0.5 text-sm"></i></div>
-                    </div>
-                </div>
-                <h4 class="font-bold text-sm text-white truncate">${safe(t.title)}</h4>
-                <p class="text-xs text-gray-400 truncate mt-0.5">${safe(t.user && t.user.name)}</p>
-            </div>`).join('');
-    } catch (e) { /* Audius unreachable: the section simply stays hidden */ }
-}
-document.addEventListener('DOMContentLoaded', loadAudiusTrending);
 
 // Extend search: local tracks first, then results from Audius
 let aTimer;
@@ -491,3 +463,55 @@ handleSearch = function (query, stay) {
         } catch (e) { box.innerHTML = ''; }
     }, 400);
 };
+
+/* ========== AUDIUS FEED: genre chips + "Load more" (merged under the main grid) ========== */
+const A_PAGE = 24;
+const A_CHIPS = [['Trending', ''], ['Lofi', 'lofi'], ['Synthwave', 'synthwave'], ['Ambient', 'ambient'], ['Chill', 'chill'], ['Electronic', 'electronic'], ['Pop', 'pop'], ['Hip-Hop', 'hip hop']];
+const aState = { q: '', offset: 0 };
+
+function playAudius(list, i) {
+    const arr = aLists[list];
+    if (!arr || !arr[i]) return;
+    const target = fromAudius(arr[i]);
+    // Add the whole loaded list to the queue so next/previous keep going through it
+    arr.forEach(t => { const s = fromAudius(t); if (!songs.some(x => x.id === s.id)) songs.push(s); });
+    selectSong(songs.findIndex(x => x.id === target.id));
+}
+
+function aCard(t, i) {
+    return `<div onclick="playAudius('feed',${i})" class="glass-card p-3.5 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all duration-300">
+        <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 shadow-lg">
+            <img src="${aImg(t)}" alt="${safe(t.title)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-lg"><i class="fa-solid fa-play ml-0.5 text-sm"></i></div>
+            </div>
+        </div>
+        <h4 class="font-bold text-sm text-white truncate">${safe(t.title)}</h4>
+        <p class="text-xs text-gray-400 truncate mt-0.5">${safe(t.user && t.user.name)}</p>
+    </div>`;
+}
+
+function renderChips() {
+    $('audius-chips').innerHTML = A_CHIPS.map(([label, q]) => `<button onclick="setAudiusChip('${q}')" class="px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${aState.q === q ? 'bg-purple-600 border-purple-500 text-white' : 'bg-panelBg border-borderPurple text-gray-300 hover:border-purple-500'}">${label}</button>`).join('');
+}
+
+function setAudiusChip(q) { aState.q = q; renderChips(); loadAudiusFeed(true); }
+
+async function loadAudiusFeed(reset) {
+    const more = $('audius-more');
+    if (reset) { aState.offset = 0; aLists.feed = []; $('audius-grid').innerHTML = ''; }
+    more.disabled = true;
+    try {
+        const path = aState.q ? `/tracks/search?query=${encodeURIComponent(aState.q)}&` : '/tracks/trending?';
+        const data = (await aFetch(`${path}limit=${A_PAGE}&offset=${aState.offset}`)).filter(streamable);
+        const fresh = data.filter(t => !aLists.feed.some(x => x.id === t.id));
+        const start = aLists.feed.length;
+        aLists.feed.push(...fresh);
+        $('audius-grid').insertAdjacentHTML('beforeend', fresh.map((t, k) => aCard(t, start + k)).join(''));
+        aState.offset += A_PAGE;
+        more.classList.toggle('hidden', data.length === 0);
+        if (aLists.feed.length) { $('audius-section').classList.remove('hidden'); renderChips(); }
+    } catch (e) { /* Audius unreachable: the section stays hidden */ }
+    more.disabled = false;
+}
+document.addEventListener('DOMContentLoaded', () => loadAudiusFeed(true));
