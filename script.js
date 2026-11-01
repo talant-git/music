@@ -251,7 +251,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (t.tracks.length) songs.splice(0, songs.length, ...t.tracks);
         user = me.user;
     } catch (e) {
-        showToast('Offline mode', 'Start the server (node server.js) to use accounts');
+        // No backend (for example on static hosting): still load the extra tracks from the static file
+        try {
+            const extra = await (await fetch('data/extra-tracks.json')).json();
+            let nextId = songs.reduce((a, s) => Math.max(a, s.id), 0);
+            extra.forEach(t => songs.push({ ...t, id: ++nextId, liked: false }));
+        } catch (_) {}
+        showToast('Guest mode', 'Accounts and uploads need the Node server');
     }
     renderGrid();
     if (audio.paused) loadSong(0);
@@ -385,9 +391,16 @@ function openModal(type, e, arg) {
 }
 
 /* ========== SPOTIFY EMBEDS (links come from data/embeds.json) ========== */
+async function getEmbeds() {
+    try { return (await api('/embeds')).embeds; } catch (e) {}
+    // No backend: read the links straight from the static file
+    const links = (await (await fetch('data/embeds.json')).json()).links || [];
+    return links.map(l => /^https:\/\/open\.spotify\.com\/(?:intl-\w+\/)?(artist|album|track|playlist)\/([A-Za-z0-9]+)/.exec(String(l)))
+        .filter(Boolean).map(m => ({ type: m[1], id: m[2] }));
+}
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        const { embeds } = await api('/embeds');
+        const embeds = await getEmbeds();
         if (!embeds.length) return;
         $('embed-section').classList.remove('hidden');
         $('embed-grid').innerHTML = embeds.map(e => `<iframe title="Spotify player" src="https://open.spotify.com/embed/${e.type}/${e.id}?theme=0" width="100%" height="${e.type === 'track' ? 152 : 352}" frameborder="0" allow="encrypted-media; clipboard-write" loading="lazy" class="rounded-2xl"></iframe>`).join('');
