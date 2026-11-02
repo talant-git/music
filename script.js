@@ -357,7 +357,7 @@ function openModal(type, e, arg) {
     const pl = user && user.playlists.find(p => p.id === arg);
     const modals = {
         premium: `<div class="text-center space-y-4"><h3 class="text-2xl font-bold text-white">Nurgulify Premium</h3><p class="text-sm text-gray-300">Enjoy 100% ad-free high fidelity streaming.</p><button onclick="closeModal()" class="${btn}">Got It</button></div>`,
-        lyrics: `<div class="space-y-4">${head('Live Stream Lyrics')}<div class="text-center py-6 text-purple-300 font-medium space-y-3"><p class="text-lg font-bold">♪ Instrumental Audio Stream ♪</p><p class="text-sm">${songs[cur].credit || 'Enjoying the soundscape...'}</p></div></div>`,
+        lyrics: lyricsHtml(),
         queue: `<div class="space-y-4">${head('Queue')}<div class="space-y-2 max-h-80 overflow-y-auto">${songs.map((s, i) => `<div onclick="selectSong(${i});closeModal();" class="p-2.5 rounded-xl hover:bg-panelHover cursor-pointer text-xs ${i === cur ? 'text-purple-400 font-bold' : 'text-white'}">${s.title}</div>`).join('')}</div></div>`,
         auth: `<div class="space-y-4">${head(mode === 'register' ? 'Create account' : 'Log in')}
             <input id="auth-user" maxlength="20" placeholder="Username" autocomplete="username" class="${inp}">
@@ -509,96 +509,62 @@ async function loadAudiusFeed(reset) {
         aLists.feed.push(...fresh);
         $('audius-grid').insertAdjacentHTML('beforeend', fresh.map((t, k) => aCard(t, start + k)).join(''));
         aState.offset += A_PAGE;
-        more.classList.toggle('hidden', data.length === 0);
+        more.classList.toggle('hidden', data.length === 0 || aLists.feed.length >= 120);
         if (aLists.feed.length) { $('audius-section').classList.remove('hidden'); renderChips(); }
     } catch (e) { /* Audius unreachable: the section stays hidden */ }
     more.disabled = false;
 }
 document.addEventListener('DOMContentLoaded', () => loadAudiusFeed(true));
 
-/* ========== YOUTUBE MUSIC: search + popular, played in the official visible YouTube player ========== */
-const YT_KEY = '';   // paste your free YouTube Data API v3 key here (restrict it to your site's domain in Google Cloud)
-const YT_CHIPS = [['Popular', ''], ['Pop', 'pop music'], ['Hip-Hop', 'hip hop'], ['Kazakh Hits', 'қазақша хит әндер'], ['Sadraddin', 'Sadraddin'], ['Miras', 'Miras қазақша ән'], ['Kilimger', 'Kilimger'], ['Dimash', 'Dimash Qudaibergen'], ['Ninety One', 'Ninety One'], ['Lofi', 'lofi'], ['Justin Bieber', 'Justin Bieber'], ['The Weeknd', 'The Weeknd']];
-const ytState = { q: '', token: '', items: [], cur: -1 };
-const ytOk = id => /^[\w-]{11}$/.test(id || '');
+/* ========== LYRICS (Spotify-style, synced) + FAST START ========== */
+// A track can have a `lyrics` field: LRC text like "[00:12.50]first line". Plain text also works.
+let lyrLines = [], lyrSong = null, lyrActive = -1;
 
-async function ytFetch(path, params) {
-    const qs = new URLSearchParams({ key: YT_KEY, part: 'snippet', ...params });
-    const r = await fetch(`https://www.googleapis.com/youtube/v3/${path}?${qs}`);
-    if (!r.ok) throw new Error('YouTube ' + r.status);
-    return r.json();
+function parseLrc(text) {
+    const out = [];
+    String(text || '').split('\n').forEach(l => {
+        const m = /^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/.exec(l.trim());
+        if (m) out.push({ t: +m[1] * 60 + +m[2], s: safe(m[3], 200) });
+    });
+    return out;
 }
+function seekTo(t) { audio.currentTime = t; }
 
-function renderYtChips() {
-    $('yt-chips').innerHTML = YT_CHIPS.map(([label, q]) => `<button onclick="setYtChip('${q}')" class="px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${ytState.q === q ? 'bg-purple-600 border-purple-500 text-white' : 'bg-panelBg border-borderPurple text-gray-300 hover:border-purple-500'}">${label}</button>`).join('');
-}
-function setYtChip(q) { $('yt-search').value = q; ytState.q = q; renderYtChips(); loadYoutube(true); }
-function ytSearch() { ytState.q = $('yt-search').value.trim(); renderYtChips(); loadYoutube(true); }
-
-async function loadYoutube(reset) {
-    if (!YT_KEY) return loadYoutubePicks();
-    if (reset) { ytState.token = ''; ytState.items = []; $('yt-grid').innerHTML = ''; }
-    $('yt-msg').textContent = '';
-    try {
-        const p = { maxResults: '24' };
-        if (ytState.token) p.pageToken = ytState.token;
-        let d;
-        if (ytState.q) {
-            d = await ytFetch('search', { ...p, type: 'video', videoCategoryId: '10', videoEmbeddable: 'true', safeSearch: 'moderate', q: ytState.q });
-        } else {
-            try { d = await ytFetch('videos', { ...p, chart: 'mostPopular', videoCategoryId: '10', regionCode: 'KZ' }); }
-            catch (e) { d = await ytFetch('videos', { ...p, chart: 'mostPopular', videoCategoryId: '10', regionCode: 'US' }); }
-        }
-        ytState.token = d.nextPageToken || '';
-        const fresh = (d.items || []).map(it => ({
-            id: typeof it.id === 'string' ? it.id : it.id && it.id.videoId,
-            title: safe(it.snippet.title, 90), channel: safe(it.snippet.channelTitle, 60)
-        })).filter(v => ytOk(v.id) && !ytState.items.some(x => x.id === v.id));
-        const start = ytState.items.length;
-        ytState.items.push(...fresh);
-        $('yt-grid').insertAdjacentHTML('beforeend', fresh.map((v, k) => `
-            <div onclick="playYoutube(${start + k})" class="glass-card p-3 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all">
-                <div class="relative w-full aspect-video rounded-xl overflow-hidden mb-3">
-                    <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="${v.title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><div class="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center"><i class="fa-solid fa-play ml-0.5 text-sm"></i></div></div>
-                </div>
-                <h4 class="font-bold text-sm text-white line-clamp-2">${v.title}</h4>
-                <p class="text-xs text-gray-400 truncate mt-0.5">${v.channel}</p>
-            </div>`).join(''));
-        $('yt-more').classList.toggle('hidden', !ytState.token);
-        if (!ytState.items.length) $('yt-msg').textContent = 'No results found.';
-    } catch (e) {
-        $('yt-msg').textContent = 'YouTube could not be reached (' + e.message + '). Check the API key and its quota.';
+function lyricsHtml() {
+    const s = songs[cur];
+    lyrLines = parseLrc(s.lyrics); lyrSong = s.id; lyrActive = -1;
+    let body;
+    if (lyrLines.length) {
+        body = `<div id="lyr-box" class="relative max-h-80 overflow-y-auto space-y-4 py-6 text-center">${lyrLines.map((l, i) =>
+            `<p data-i="${i}" onclick="seekTo(${l.t})" class="lyr-line cursor-pointer text-xl font-bold text-gray-500 hover:text-gray-300 transition-all">${l.s || '♪'}</p>`).join('')}</div>`;
+    } else if (s.lyrics) {
+        body = `<div class="max-h-80 overflow-y-auto space-y-2 py-4 text-center text-gray-200">${String(s.lyrics).split('\n').map(l => `<p>${safe(l, 200) || '&nbsp;'}</p>`).join('')}</div>`;
+    } else {
+        body = `<div class="text-center py-6 text-purple-300 space-y-2"><p class="text-lg font-bold">♪ No lyrics for this track ♪</p><p class="text-xs text-gray-400">${s.credit || ''}</p></div>`;
     }
+    return `<div class="space-y-4">${head(safe(s.title) + ' · Lyrics')}${body}</div>`;
 }
 
-// Without an API key: show the videos listed in data/youtube-videos.json (paste YouTube links there)
-async function loadYoutubePicks() {
-    try {
-        const list = (await (await fetch('data/youtube-videos.json')).json()).videos || [];
-        ytState.items = list.map(v => ({ id: (/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/)([\w-]{11})/.exec(v.url || '') || [])[1], title: safe(v.title, 90) || 'YouTube video', channel: safe(v.artist, 60) }))
-            .filter(v => ytOk(v.id));
-        $('yt-grid').innerHTML = ytState.items.map((v, i) => `
-            <div onclick="playYoutube(${i})" class="glass-card p-3 rounded-2xl cursor-pointer group hover:bg-panelHover transition-all">
-                <div class="relative w-full aspect-video rounded-xl overflow-hidden mb-3"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="${v.title}" loading="lazy" class="w-full h-full object-cover"></div>
-                <h4 class="font-bold text-sm text-white line-clamp-2">${v.title}</h4><p class="text-xs text-gray-400 truncate mt-0.5">${v.channel}</p>
-            </div>`).join('');
-        $('yt-msg').textContent = ytState.items.length ? '' : 'Add YouTube links to data/youtube-videos.json (or set YT_KEY in script.js to search all songs).';
-    } catch (e) { $('yt-msg').textContent = 'Set YT_KEY in script.js to search YouTube.'; }
-}
+audio.addEventListener('timeupdate', () => {
+    const box = $('lyr-box');
+    if (!box || !lyrLines.length || songs[cur].id !== lyrSong) return;
+    let a = -1;
+    for (let i = 0; i < lyrLines.length && lyrLines[i].t <= audio.currentTime + 0.25; i++) a = i;
+    if (a === lyrActive) return;
+    lyrActive = a;
+    box.querySelectorAll('.lyr-line').forEach((p, i) => {
+        const on = i === a;
+        p.classList.toggle('text-white', on); p.classList.toggle('text-2xl', on); p.classList.toggle('text-gray-500', !on);
+    });
+    const p = box.querySelector(`[data-i="${a}"]`);
+    if (p) box.scrollTo({ top: p.offsetTop - box.clientHeight / 2 + p.clientHeight / 2, behavior: 'smooth' });
+});
 
-function playYoutube(i) {
-    const v = ytState.items[i];
-    if (!v) return;
-    ytState.cur = i;
-    audio.pause();                      // the site's own player stops while a video plays
-    $('yt-frame').src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0`;
-    $('yt-title').textContent = `${v.title} - ${v.channel}`;
-    $('yt-player-box').classList.remove('hidden');
-    $('yt-player-box').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-function ytStep(d) { const n = ytState.cur + d; if (n >= 0 && n < ytState.items.length) playYoutube(n); }
-function stopYoutube() { $('yt-frame').src = 'about:blank'; $('yt-player-box').classList.add('hidden'); }
-
-audio.addEventListener('play', stopYoutube);   // starting a site track closes the YouTube player
-document.addEventListener('DOMContentLoaded', () => { renderYtChips(); loadYoutube(true); });
+// Fast start: while a track plays, fetch the beginning of the next one so it starts almost instantly
+const warmup = new Audio();
+warmup.preload = 'auto';
+audio.addEventListener('playing', () => {
+    if (isShuffle || songs.length < 2) return;
+    const next = songs[(cur + 1) % songs.length];
+    if (warmup.src !== next.url) { warmup.src = next.url; warmup.load(); }
+});
